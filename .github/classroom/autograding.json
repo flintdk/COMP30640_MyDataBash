@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Test Script",
+      "setup": "wget -q csserver.ucd.ie/~rholmes/classroom_test_script.py -O classroom_test_script.py",
+      "run": "python3 classroom_test_script.py",
+      "input": "",
+      "output": "",
+      "comparison": "included",
+      "timeout": 1,
+      "points": null
+    }
+  ]
+}
