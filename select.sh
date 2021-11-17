@@ -53,7 +53,7 @@ if [ -n "$1" ] && [ "$1" != "WHERE" ]; then
     regex="^[0-9]+$"
     for col in "${colArr[@]}"; do
         if ! [[ $col =~ $regex ]] ; then
-            usage 1 "ERROR Only numeric column positions are considered: '$1'.";
+            usage 1 "ERROR Only positive numeric column positions are considered: '$1'.";
         fi
     done
 
@@ -96,7 +96,7 @@ noColsInTable=$(( noDelimsInTableHeader + 1))
 # a space seperated list of cols to select.  We want to Loop over the colArr
 # now to check each column selected.
 for col in "${colArr[@]}"; do
-    if [ "$col" -gt "$noColsInTable" ]; then
+    if (( col < 1 )) || (( col > noColsInTable )); then
         err_msg="ERROR The table \e[1m$table\e[0m has $noColsInTable columns.\n"
         err_msg+="You have requested data from column $col?\n"
         err_msg+="Selected column out of bounds! Aborting..."
