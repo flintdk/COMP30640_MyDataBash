@@ -29,6 +29,7 @@ elif [ -z "$2" ]; then
     usage 1 "ERROR You must supply a table name.";
 fi
 database=$1
+home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 table=$2
 # We know we have the database and table now so get rid of them.
 shift 2
@@ -80,16 +81,16 @@ fi
 
 # If the database exists (we don't care if it's a regular file, or a directory,
 # or whatever) - then this is an error and we abort
-if [ ! -d "$database" ]; then
+if [ ! -d "$home_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 2 # the exit code that shows the db does not exist
-elif [ ! -e "$database/$table" ]; then
+elif [ ! -e "$home_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 3 # the exit code that shows the table does not exist
 fi
 
 # We establish how many columns are in our table header.
-noDelimsInTableHeader=$(head -n 1 "$database/$table" | grep -o ","  | wc -l)
+noDelimsInTableHeader=$(head -n 1 "$home_dir/$database/$table" | grep -o ","  | wc -l)
 noColsInTable=$(( noDelimsInTableHeader + 1))
 
 # We know how many columns are in the table.  We know our colArr contains
@@ -111,6 +112,11 @@ echo "start_result"
 # First we loop over the table file, one record at a time...
 firstRecord=true  # We always select the first record.  Even if no data records
                   # are selected, we want to output the column headings.
+
+# Lock the table *** for the entire duration of the read ***!!!
+# This is the only way to ensure we don't get half a write
+# TODO: Confirm approach with the TA in lab
+"$home_dir/P.sh" "$database/$table"
 while read -r record; do
     # Convert the record just read into another, nice, handy array...
     old_ifs="$IFS"
@@ -158,6 +164,8 @@ while read -r record; do
         echo "$retrievedData"
     fi
 
-done < "$database/$table"
+done < "$home_dir/$database/$table"
+# Release the lock on the table after the read is complete
+"$home_dir/V.sh" "$database/$table"
 
 echo "end_result"

@@ -28,21 +28,22 @@ fi
 
 # here the core of your script
 database=$1
+home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 table=$2
 tuple=$3
 
 # If the database does not exist...
-if [ ! -d "$database" ]; then
+if [ ! -d "$home_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 2 # the exit code that shows the db does not exist
 # If the table does not exist...
-elif [ ! -e "$database/$table" ]; then
+elif [ ! -e "$home_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 3 # the exit code that shows the table does not exist
 fi
 
 # We establish how many columns are in our table header.
-noDelimsInTableHeader=$(head -n 1 "$database/$table" | grep -o ","  | wc -l)
+noDelimsInTableHeader=$(head -n 1 "$home_dir/$database/$table" | grep -o ","  | wc -l)
 noColsInTable=$(( noDelimsInTableHeader + 1))
 # We establish how many columns are in our data tuple.
 noDelimsInTuple=$(echo "$tuple" | grep -o "," | wc -l)
@@ -55,8 +56,13 @@ if (( noColsInTuple != noColsInTable )); then
     echo -e "$err_msg" >&2 # &2 is standard error output
     exit 3 # the exit code that shows the db alreadys existed
 else
+    # We only lock the database table for as long as it takes us to insert
+    # a record to it...
+    "$home_dir/P.sh" "$database/$table"
     # at the end of the script an exit code 0 means everything went well
-    echo "$tuple" >> "$database/$table"
+    echo "$tuple" >> "$home_dir/$database/$table"
+    # tuple written, release the lock
+    "$home_dir/V.sh" "$database/$table"
     echo -e "OK: Tuple Inserted."
     exit 0
 fi

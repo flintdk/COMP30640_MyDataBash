@@ -39,6 +39,23 @@ else
     usage 1 "ERROR: Expected \"INTERACTIVE\" or no arguments, encountered \"$1\""
 fi
 
+#===============================================================================
+#===============================================================================
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+function ctrl_c() {
+    #do something when control c is trapped
+    echo "ctrl_c"
+    exit 1
+}
+
+
+#===============================================================================
+#===============================================================================
+
+home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
+
 # Infinite server loop - only exits on command.
 while true; do
     if [ "$mode" == "$interactive" ]; then
@@ -70,19 +87,19 @@ while true; do
     case "$srvrCommand" in
     create_database)
         # create_database $database: creates database $database
-        ./create_database.sh "${commandArr[@]}"
+        "$home_dir/create_database.sh" "${commandArr[@]}" > "$home_dir/create_database.log" 2>&1 &
         ;;
     create_table)
         # create table $database $table: which creates table $table
-        ./create_table.sh "${commandArr[@]}"
+        "$home_dir/create_table.sh" "${commandArr[@]}" > "$home_dir/create_table.log" 2>&1 &
         ;;
     insert)
         # insert $database $table tuple: insert the tuple into table $table of database $database
-        ./insert.sh "${commandArr[@]}"
+        "$home_dir/insert.sh" "${commandArr[@]}" "$home_dir/insert.log" 2>&1 &
         ;;
     select)
         # select $database $table tuple: display the columns from table $table of database $database
-        ./select.sh "${commandArr[@]}"
+        "$home_dir/select.sh" "${commandArr[@]}" "$home_dir/select.log" 2>&1 &
         ;;
     shutdown)
         # shutdown: exit with a return code of 0
@@ -90,7 +107,7 @@ while true; do
         exit 0
         ;;
     *)
-        errMsg="ERROR: Bad server command. I don't understand -> \"$1\"";
+        errMsg="ERROR: Bad server command. I don't understand -> \"$srvrCommand\"";
         errMsg+="Ignoring, logging and listening for more commands!";
         echo "$errMsg"
     esac
