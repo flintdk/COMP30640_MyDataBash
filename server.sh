@@ -16,13 +16,13 @@ function usage() {
     #   echo -e "\e[3m\e[1mbold italic\e[0m"
     #   echo -e "\e[4munderline\e[0m"
     #   echo -e "\e[9mstrikethrough\e[0m"
-    echo -e "$2\n\e[1mUsage\e[0m:"
-    errMsg="\e[3m$0\e[0m \e[3m[create_database | create_table | insert | select | shutdown]\e[0m\n"
-    errMsg+="  \e[3mcreate_database\e[0m \e[3mdatabase_name\e[0m\n"
-    errMsg+="  \e[3mcreate_table\e[0m \e[3mdatabase_name\e[0m \e[3mtable_name\e[0m \e[3mcolumns_name\e[0m\n"
-    errMsg+="  \e[3minsert\e[0m \e[3mdatabase_name\e[0m \e[3mtable_name\e[0m \e[3mdata_tuple\e[0m\n"
-    errMsg+="  \e[3mselect\e[0m \e[3mdatabase_name\e[0m \e[3mtable_name\e[0m \e[3mcolumns\e[0m\n"
-    errMsg+="            \e[3mWHERE\e[0m \e[3mwhere_comparison_column\e[0m \e[3mwhere_comparison_value\e[0m\n"
+    echo -e "$2  \n\e[1mUsage\e[0m:"
+    errMsg="\e[3m$0 [create_database | create_table | insert | select | shutdown]\e[0m\n"
+    errMsg+="  \e[3mcreate_database database_name\e[0m\n"
+    errMsg+="  \e[3mcreate_table database_name table_name columns_name\e[0m\n"
+    errMsg+="  \e[3minsert database_name table_name data_tuple\e[0m\n"
+    errMsg+="  \e[3mselect database_name table_name [ columns ]\e[0m\n"
+    errMsg+="            \e[3m[ WHERE where_comparison_column where_comparison_value\e[0m\n"
     errMsg+="  \e[3mshutdown\e[0m\n"
     echo -e "$errMsg"
     #
@@ -48,6 +48,8 @@ fi
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 function ctrl_c() {
+
+        delete server pipe
     #do something when control c is trapped
     echo "ctrl_c"
     exit 1
@@ -56,6 +58,12 @@ function ctrl_c() {
 
 #===============================================================================
 #===============================================================================
+
+# If we're not in INTERACTIVE mode, then before we enter our management loop,
+# create our command pipe
+if [ ! "$mode" == "$interactive" ]; then
+    mkfifo server.pipe
+fi
 
 # Infinite server loop - only exits on command.
 while true; do
@@ -105,6 +113,9 @@ while true; do
     shutdown)
         # shutdown: exit with a return code of 0
         echo "SERVER.SH Orderly Shutdown requested.  Bye!"
+        if [ -p server.pipe ]; then
+            rm server.pipe
+        fi
         exit 0
         ;;
     *)

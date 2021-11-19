@@ -18,12 +18,12 @@ function usage() {
     #   echo -e "\e[3m\e[1mbold italic\e[0m"
     #   echo -e "\e[4munderline\e[0m"
     #   echo -e "\e[9mstrikethrough\e[0m"
-    echo -e "$2\n\e[1mUsage\e[0m:"
-    echo -e "\e[3m$0\e[0m \e[3mdatabase_name\e[0m \e[3mtable_name\e[0m \e[3m[columns]\e[0m"
+    echo -e "$2  \n\e[1mUsage\e[0m:"
+    echo -e "\e[3m$0 database_name table_name [ columns ]\e[0m"
     echo -e "\e[1m-OR-\e[0m"
-    echo -e "\e[3m$0\e[0m \e[3mdatabase_name\e[0m \e[3mtable_name\e[0m \e[3mcolumns\e[0m"
-    echo -e "            \e[3mWHERE\e[0m \e[3mwhere_comparison_column\e[0m \e[3mwhere_comparison_value\e[0m"
-    exit $1  # exit with error status
+    echo -e "\e[3m$0 database_name table_name [ columns ]\e[0m"
+    echo -e "            \e[3m[ WHERE where_comparison_column where_comparison_value ]\e[0m"
+    exit "$1"  # exit with error status
 }
 # I'm taking a variable number of arguments for this script, so I need to be a
 # little careful when I'm parsing them.  The argument checking is not perfect,

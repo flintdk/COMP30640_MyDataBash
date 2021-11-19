@@ -18,8 +18,8 @@ function usage() {
     #   echo -e "\e[3m\e[1mbold italic\e[0m"
     #   echo -e "\e[4munderline\e[0m"
     #   echo -e "\e[9mstrikethrough\e[0m"
-    echo -e "$2  \e[1mUsage\e[0m: \e[3m$0\e[0m \e[3mdatabase_name\e[0m"
-    exit $1  # exit with error status
+    echo -e "$2  \e[1mUsage\e[0m: \e[3m$0 database_name\e[0m"
+    exit "$1"  # exit with error status
 }
 if [ -z "$1" ]; then
     usage 1 "ERROR You must supply a database name.";
