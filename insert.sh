@@ -36,17 +36,17 @@ table=$2
 tuple=$3
 
 # If the database does not exist...
-if [ ! -d "$home_dir/$database" ]; then
+if [ ! -d "$data_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 2 # the exit code that shows the db does not exist
 # If the table does not exist...
-elif [ ! -e "$home_dir/$database/$table" ]; then
+elif [ ! -e "$data_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 3 # the exit code that shows the table does not exist
 fi
 
 # We establish how many columns are in our table header.
-noDelimsInTableHeader=$(head -n 1 "$home_dir/$database/$table" | grep -o ","  | wc -l)
+noDelimsInTableHeader=$(head -n 1 "$data_dir/$database/$table" | grep -o ","  | wc -l)
 noColsInTable=$(( noDelimsInTableHeader + 1))
 # We establish how many columns are in our data tuple.
 noDelimsInTuple=$(echo "$tuple" | grep -o "," | wc -l)
@@ -61,11 +61,11 @@ if (( noColsInTuple != noColsInTable )); then
 else
     # We only lock the database table for as long as it takes us to insert
     # a record to it...
-    getLock_P "$database/$table"
+    getLock_P "$data_dir/$database/$table"
     # at the end of the script an exit code 0 means everything went well
-    echo "$tuple" >> "$home_dir/$database/$table"
+    echo "$tuple" >> "$data_dir/$database/$table"
     # tuple written, release the lock
-    releaseLock_V "$database/$table"
+    releaseLock_V "$data_dir/$database/$table"
     echo -e "OK: Tuple Inserted."
     exit 0
 fi

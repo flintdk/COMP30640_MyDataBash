@@ -37,26 +37,26 @@ table=$2
 columns=$3
 
 # If the database does not exist...
-if [ ! -d "$home_dir/$database" ]; then
+if [ ! -d "$data_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 2 # the exit code that shows the db does not exist
 fi
 
 # Create a lock at table level before checking/creating a table
-getLock_P "$database/$table"
+getLock_P "$data_dir/$database/$table"
 # If the table aready exists...
-if [ -e "$home_dir/$database/$table" ]; then
+if [ -e "$data_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m already exists!  Aborting..." >&2 # &2 is standard error output
     # If the table already exists, we need to exit.  Don't forget to release the lock!
-    releaseLock_V "$database/$table"
+    releaseLock_V "$data_dir/$database/$table"
     exit 3 # the exit code that shows the table already existed    
 else
     # at the end of the script an exit code 0 means everything went well
-    touch "$home_dir/$database/$table"
+    touch "$data_dir/$database/$table"
     # Write the desired columns to the newly created file.
-    echo "$columns" > "$home_dir/$database/$table"
+    echo "$columns" > "$data_dir/$database/$table"
     # Table created and columns written - release the lock
-    releaseLock_V "$database/$table"
+    releaseLock_V "$data_dir/$database/$table"
     echo -e "Success! The table \e[1m$table\e[0m has been created, for database \e[1m$database\e[0m"
     exit 0
 fi

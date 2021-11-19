@@ -86,16 +86,16 @@ fi
 
 # If the database exists (we don't care if it's a regular file, or a directory,
 # or whatever) - then this is an error and we abort
-if [ ! -d "$home_dir/$database" ]; then
+if [ ! -d "$data_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 2 # the exit code that shows the db does not exist
-elif [ ! -e "$home_dir/$database/$table" ]; then
+elif [ ! -e "$data_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m does not exist!  Aborting..." >&2 # &2 is standard error output
     exit 3 # the exit code that shows the table does not exist
 fi
 
 # We establish how many columns are in our table header.
-noDelimsInTableHeader=$(head -n 1 "$home_dir/$database/$table" | grep -o ","  | wc -l)
+noDelimsInTableHeader=$(head -n 1 "$data_dir/$database/$table" | grep -o ","  | wc -l)
 noColsInTable=$(( noDelimsInTableHeader + 1))
 
 # We know how many columns are in the table.  We know our colArr contains
@@ -121,7 +121,7 @@ firstRecord=true  # We always select the first record.  Even if no data records
 # Lock the table *** for the entire duration of the read ***!!!
 # This is the only way to ensure we don't get half a write
 # TODO: Confirm approach with the TA in lab
-getLock_P "$database/$table"
+getLock_P "$data_dir/$database/$table"
 while read -r record; do
     # Convert the record just read into another, nice, handy array...
     old_ifs="$IFS"
@@ -169,8 +169,8 @@ while read -r record; do
         echo "$retrievedData"
     fi
 
-done < "$home_dir/$database/$table"
+done < "$data_dir/$database/$table"
 # Release the lock on the table after the read is complete
-releaseLock_V "$database/$table"
+releaseLock_V "$data_dir/$database/$table"
 
 echo "end_result"
