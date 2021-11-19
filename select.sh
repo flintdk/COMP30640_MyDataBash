@@ -1,6 +1,11 @@
 #!/bin/bash
 # select.sh; Select some data from a database table (file)
 
+# Set up home directory and include shared resources
+home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -28,8 +33,8 @@ if [ -z "$1" ]; then
 elif [ -z "$2" ]; then
     usage 1 "ERROR You must supply a table name.";
 fi
+
 database=$1
-home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 table=$2
 # We know we have the database and table now so get rid of them.
 shift 2
@@ -116,7 +121,7 @@ firstRecord=true  # We always select the first record.  Even if no data records
 # Lock the table *** for the entire duration of the read ***!!!
 # This is the only way to ensure we don't get half a write
 # TODO: Confirm approach with the TA in lab
-"$home_dir/P.sh" "$database/$table"
+getLock_P "$database/$table"
 while read -r record; do
     # Convert the record just read into another, nice, handy array...
     old_ifs="$IFS"
@@ -166,6 +171,6 @@ while read -r record; do
 
 done < "$home_dir/$database/$table"
 # Release the lock on the table after the read is complete
-"$home_dir/V.sh" "$database/$table"
+releaseLock_V "$database/$table"
 
 echo "end_result"

@@ -1,6 +1,11 @@
 #!/bin/bash
 # create_table.sh; Create a file representing a table in a database
 
+# Set up home directory and include shared resources
+home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -28,7 +33,6 @@ fi
 
 # here the core of your script
 database=$1
-home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 table=$2
 columns=$3
 
@@ -39,12 +43,12 @@ if [ ! -d "$home_dir/$database" ]; then
 fi
 
 # Create a lock at table level before checking/creating a table
-"$home_dir/P.sh" "$database/$table"
+getLock_P "$database/$table"
 # If the table aready exists...
 if [ -e "$home_dir/$database/$table" ]; then
     echo -e "ERROR The table \e[1m$table\e[0m already exists!  Aborting..." >&2 # &2 is standard error output
     # If the table already exists, we need to exit.  Don't forget to release the lock!
-    "$home_dir/V.sh" "$database/$table"
+    releaseLock_V "$database/$table"
     exit 3 # the exit code that shows the table already existed    
 else
     # at the end of the script an exit code 0 means everything went well
@@ -52,7 +56,7 @@ else
     # Write the desired columns to the newly created file.
     echo "$columns" > "$home_dir/$database/$table"
     # Table created and columns written - release the lock
-    "$home_dir/V.sh" "$database/$table"
+    releaseLock_V "$database/$table"
     echo -e "Success! The table \e[1m$table\e[0m has been created, for database \e[1m$database\e[0m"
     exit 0
 fi

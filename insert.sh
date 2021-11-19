@@ -1,6 +1,11 @@
 #!/bin/bash
 # insert.sh; Insert data into a database table (file)
 
+# Set up home directory and include shared resources
+home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -26,9 +31,7 @@ elif [ $# -ne 3 ]; then
     usage 1 "ERROR The number of arguments is wrong.";
 fi
 
-# here the core of your script
 database=$1
-home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 table=$2
 tuple=$3
 
@@ -58,11 +61,11 @@ if (( noColsInTuple != noColsInTable )); then
 else
     # We only lock the database table for as long as it takes us to insert
     # a record to it...
-    "$home_dir/P.sh" "$database/$table"
+    getLock_P "$database/$table"
     # at the end of the script an exit code 0 means everything went well
     echo "$tuple" >> "$home_dir/$database/$table"
     # tuple written, release the lock
-    "$home_dir/V.sh" "$database/$table"
+    releaseLock_V "$database/$table"
     echo -e "OK: Tuple Inserted."
     exit 0
 fi

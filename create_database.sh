@@ -1,6 +1,11 @@
 #!/bin/bash
 # create_datebase.sh; Create a folder to contain all entities for a database
 
+# Set up home directory and include shared resources
+home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -21,23 +26,23 @@ if [ -z "$1" ]; then
 elif [ $# -ne 1 ]; then
     usage 1 "ERROR The number of arguments is wrong.";
 fi
-
-# here the core of your script
 database=$1
-home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 
 # Create a lock at database level before checking/creating a database
-"$home_dir/P.sh" "$database"
-if [ -e "$home_dir/$database" ]; then
+#"$home_dir/P.sh" "$database"
+getLock_P "$database"
+if [ -e "$data_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m already exists!  Aborting..." >&2 # &2 is standard error output
     # If the db already exists, we need to exit.  Don't forget to release the lock!
-    "$home_dir/V.sh" "$database"
+    #"$home_dir/V.sh" "$database"
+    releaseLock_V "$database"
     exit 2 # the exit code that shows the db already existed
 else
     # at the end of the script an exit code 0 means everything went well
-    mkdir "$home_dir/$database"
+    mkdir "$data_dir/$database"
     # Db created - release the lock
-    "$home_dir/V.sh" "$database"
+    #"$home_dir/V.sh" "$database"
+    releaseLock_V "$database"
     echo -e "Success! The database \e[1m$database\e[0m has been created"
     exit 0
 fi

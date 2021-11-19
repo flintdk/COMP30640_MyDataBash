@@ -1,6 +1,9 @@
 #!/bin/bash
 # server.sh; Reads commands from clients and executes them
 
+# Set up home directory...
+home_dir=$(pwd)
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -53,8 +56,6 @@ function ctrl_c() {
 
 #===============================================================================
 #===============================================================================
-
-home_dir=$(pwd)  # TODO Consider putting all databases into 'data' subfolder?
 
 # Infinite server loop - only exits on command.
 while true; do
