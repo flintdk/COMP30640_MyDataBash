@@ -1,2 +1,3 @@
 # Ignore any log files we generate in this directory
 *.log
+*.pipe

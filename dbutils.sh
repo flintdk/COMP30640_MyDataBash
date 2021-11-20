@@ -4,6 +4,17 @@
 home_dir=$(pwd)
 data_dir=$home_dir/data
 
+function tidyPipe() {
+    # tidyPipe; A generic function to clean up pipe when we're done with them
+    #           and print an error message.
+
+    # I have implemented no argument checking!! How much do I trust myself...
+    echo -e "$1: Cleaning up pipe '$2'"
+    if [ -p "$2" ]; then
+        rm "$home_dir/$2"
+    fi
+}
+
 function getLock_P() {
     # getLock_P; An atomic operation that waits for semaphore to become available, then takes it
     #            *** The wait() operation ***

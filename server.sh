@@ -1,8 +1,10 @@
 #!/bin/bash
 # server.sh; Reads commands from clients and executes them
 
-# Set up home directory...
+# Set up home directory and include shared resources
 home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
 
 # First - check our arguments:
 function usage() {
@@ -45,13 +47,17 @@ fi
 #===============================================================================
 #===============================================================================
 
+function shutdownServer() {
+    # shutdownServer; Shut down the server.
+    echo "$1 Orderly Shutdown requested.  Bye!"
+    tidyPipe "$1" "$2"
+    exit 0
+}
+
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 function ctrl_c() {
-
-        delete server pipe
-    #do something when control c is trapped
-    echo "ctrl_c"
+    shutdownServer "CTRL-C" "server.pipe"
     exit 1
 }
 
@@ -70,53 +76,82 @@ while true; do
     if [ "$mode" == "$interactive" ]; then
         echo -n "Please enter a server command: ";
         #read -r command;
-        old_ifs="$IFS"
-        IFS=' ' read -r -a commandArr
-        IFS="$old_ifs"  # Reset IFS so I haven't broken anything...
+        #old_ifs="$IFS"
+        #IFS=' ' read -r -a commandArr
+        #IFS="$old_ifs"  # Reset IFS so I haven't broken anything...
+        read -r -a commandArr
+
+        # -> In INTERACTIVE mode our commands will be the base commands
     else
-        echo "SERVER.SH Service mode not supported yet - watch yer syntax!!"
-        exit 1
+        # In 'service' mode we read server commands from the server.pipe pipe
+        read -r -a commandArr < server.pipe
+
+        # -> In 'Service' mode our commands will have a UserId first, followed by
+        #    the base commands.  Grab out the user id...
+        userId="${commandArr[0]}"
+        echo "userid is $userId"
+
+        # Then remove the first element of the array...
+        # Use a new method (to me) to remove the first element from the array. See:
+        #   https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+        # See the section starting with 'If parameter is an indexed array name
+        # subscripted by ‘@’ or ‘*’, the result...'
+        # This neat little syntax lets me extract whatever array elements I want!
+        #unset commandArr[0]
+        commandArr=("${commandArr[@]:1}")  # Remove the userId from the array
     fi
 
-    # We now have an array consisting of the users commands.
+    # Whether interactive or service mode, now grab the server command...
     srvrCommand="${commandArr[0]}"
-    # Use a new method (to me) to remove the first element from the array. See:
-    #   https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
-    # See the section starting with 'If parameter is an indexed array name
-    # subscripted by ‘@’ or ‘*’, the result...'
-    # This neat little syntax lets me extract whatever array elements I want!
-    #unset commandArr[0]
-    commandArr=("${commandArr[@]:1}")  # we'll be passing all remaining arguments to the command scripts
-    # msg="function arguments are:"
-    # for fnArg in "${commandArr[@]}"; do
-    #     msg+=" $fnArg";
-    # done
-    # echo "$msg"
+    echo "srvrCommand is $srvrCommand"
+    commandArr=("${commandArr[@]:1}")  # ... and then remove it from the array too...
+    msg="function arguments are:"
+    for fnArg in "${commandArr[@]}"; do
+        msg+=" $fnArg";
+    done
+    echo "$msg"
 
     case "$srvrCommand" in
     create_database)
         # create_database $database: creates database $database
-        "$home_dir/create_database.sh" "${commandArr[@]}" > "$home_dir/create_database.log" 2>&1 &
+        if [ "$mode" == "$interactive" ]; then
+            "$home_dir/create_database.sh" "${commandArr[@]}" > "$home_dir/create_database.log" &
+        else
+            "$home_dir/create_database.sh" "${commandArr[@]}" > "$userId.pipe" &
+        fi
         ;;
     create_table)
         # create table $database $table: which creates table $table
-        "$home_dir/create_table.sh" "${commandArr[@]}" > "$home_dir/create_table.log" 2>&1 &
+        if [ "$mode" == "$interactive" ]; then
+            "$home_dir/create_table.sh" "${commandArr[@]}" > "$home_dir/create_table.log" &
+        else
+            "$home_dir/create_table.sh" "${commandArr[@]}" > "$userId.pipe" &
+        fi
         ;;
     insert)
         # insert $database $table tuple: insert the tuple into table $table of database $database
-        "$home_dir/insert.sh" "${commandArr[@]}" "$home_dir/insert.log" 2>&1 &
+        if [ "$mode" == "$interactive" ]; then
+            "$home_dir/insert.sh" "${commandArr[@]}" > "$home_dir/insert.log" &
+        else
+            "$home_dir/insert.sh" "${commandArr[@]}" > "$userId.pipe" &
+        fi
+        
         ;;
     select)
         # select $database $table tuple: display the columns from table $table of database $database
-        "$home_dir/select.sh" "${commandArr[@]}" "$home_dir/select.log" 2>&1 &
+        if [ "$mode" == "$interactive" ]; then
+            "$home_dir/select.sh" "${commandArr[@]}" > "$home_dir/select.log" &
+        else
+            "$home_dir/select.sh" "${commandArr[@]}" > "$userId.pipe" &
+        fi
         ;;
     shutdown)
         # shutdown: exit with a return code of 0
-        echo "SERVER.SH Orderly Shutdown requested.  Bye!"
-        if [ -p server.pipe ]; then
-            rm server.pipe
+        if [ "$mode" == "$interactive" ]; then
+            shutdownServer "SERVER.SH" "server.pipe"
+        else
+            shutdownServer "SERVER.SH" "server.pipe" > "$userId.pipe"
         fi
-        exit 0
         ;;
     *)
         errMsg="ERROR: Bad server command. I don't understand -> \"$srvrCommand\"";

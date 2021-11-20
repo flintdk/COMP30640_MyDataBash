@@ -1,8 +1,10 @@
 #!/bin/bash
 # client.sh; Reads commands from clients and executes them
 
-# Set up home directory...
+# Set up home directory and include shared resources
 home_dir=$(pwd)
+# shellcheck source=./dbutils.sh
+source "$home_dir/dbutils.sh"
 
 # First - check our arguments:
 function usage() {
@@ -40,15 +42,20 @@ usage 1 "testing client.sh"
 #===============================================================================
 #===============================================================================
 
+function shutdownClient()) {
+    # shutdownServer; Shut down the server.
+    echo "$1 Orderly Shutdown requested.  Bye!"
+    tidyPipe "$1" "$2"
+    exit 0
+}
+
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 function ctrl_c() {
-    #do something when control c is trapped
-
-    delete client  pipe
-    echo "ctrl_c"
+    shutdownClient "CTRL-C" "$1.pipe"
     exit 1
 }
+
 
 #===============================================================================
 #===============================================================================
@@ -92,11 +99,7 @@ being the id given as parameter of the client.sh script.
         ;;
     exit)
         # shutdown: exit with a return code of 0
-        echo "CLIENT.SH Client Shutdown requested.  Bye!"
-        if [ -p "$1.pipe" ]; then
-            rm "$1.pipe"
-        fi
-        exit 0
+        shutdownClient "CLIENT.SH" "$1.pipe"
         ;;
     *)
         errMsg="ERROR: Bad client command. I don't understand -> \"$clientCommand\"";
