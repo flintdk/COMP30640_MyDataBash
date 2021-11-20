@@ -49,7 +49,12 @@ fi
 
 function shutdownServer() {
     # shutdownServer; Shut down the server.
-    echo "$1 Orderly Shutdown requested.  Bye!"
+    shutdownMsg="$1 Orderly Server Shutdown requested.  Bye!"
+    if [ "$mode" == "$interactive" ]; then
+        echo "$shutdownMsg"
+    else
+        echo "$shutdownMsg" > "$userId.pipe"
+    fi
     tidyPipe "$1" "$2"
     exit 0
 }
@@ -104,10 +109,10 @@ while true; do
     # Whether interactive or service mode, now grab the server command...
     srvrCommand="${commandArr[0]}"
     echo "srvrCommand is $srvrCommand"
-    commandArr=("${commandArr[@]:1}")  # ... and then remove it from the array too...
-    msg="function arguments are:"
-    for fnArg in "${commandArr[@]}"; do
-        msg+=" $fnArg";
+    argArr=("${commandArr[@]:1}")  # ... and then remove it from the array too...
+    msg="server.sh function arguments are:"
+    for fnArg in "${argArr[@]}"; do
+        msg+=" >$fnArg<";
     done
     echo "$msg"
 
@@ -115,34 +120,34 @@ while true; do
     create_database)
         # create_database $database: creates database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/create_database.sh" "${commandArr[@]}" > "$home_dir/create_database.log" &
+            "$home_dir/create_database.sh" "${argArr[@]}" > "$home_dir/create_database.log" 2>&1 &
         else
-            "$home_dir/create_database.sh" "${commandArr[@]}" > "$userId.pipe" &
+            "$home_dir/create_database.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
         fi
         ;;
     create_table)
         # create table $database $table: which creates table $table
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/create_table.sh" "${commandArr[@]}" > "$home_dir/create_table.log" &
+            "$home_dir/create_table.sh" "${argArr[@]}" > "$home_dir/create_table.log" 2>&1 &
         else
-            "$home_dir/create_table.sh" "${commandArr[@]}" > "$userId.pipe" &
+            "$home_dir/create_table.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
         fi
         ;;
     insert)
         # insert $database $table tuple: insert the tuple into table $table of database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/insert.sh" "${commandArr[@]}" > "$home_dir/insert.log" &
+            "$home_dir/insert.sh" "${argArr[@]}" > "$home_dir/insert.log" 2>&1 &
         else
-            "$home_dir/insert.sh" "${commandArr[@]}" > "$userId.pipe" &
+            "$home_dir/insert.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
         fi
         
         ;;
     select)
         # select $database $table tuple: display the columns from table $table of database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/select.sh" "${commandArr[@]}" > "$home_dir/select.log" &
+            "$home_dir/select.sh" "${argArr[@]}" > "$home_dir/select.log" 2>&1 &
         else
-            "$home_dir/select.sh" "${commandArr[@]}" > "$userId.pipe" &
+            "$home_dir/select.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
         fi
         ;;
     shutdown)
@@ -150,12 +155,23 @@ while true; do
         if [ "$mode" == "$interactive" ]; then
             shutdownServer "SERVER.SH" "server.pipe"
         else
-            shutdownServer "SERVER.SH" "server.pipe" > "$userId.pipe"
+            shutdownServer "SERVER.SH" "server.pipe" > "$userId.pipe" 2>&1
         fi
         ;;
     *)
         errMsg="ERROR: Bad server command. I don't understand -> \"$srvrCommand\"";
         errMsg+="Ignoring, logging and listening for more commands!";
-        echo "$errMsg"
+        if [ "$mode" == "$interactive" ]; then
+            echo "$errMsg"
+        else
+            echo "$errMsg" > "$userId.pipe"
+        fi
     esac
 done
+
+# Parting note:  There is a ton of repetition in this script. It's littered with
+# "if interactive, else..." logic.  I could have added a layer (file? another
+# pipe?) and allowed the server to always write all content there.  Then at the
+# end of a command choose where to sent the output.
+#
+# But I guess I don't have time for that so...

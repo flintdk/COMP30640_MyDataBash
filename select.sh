@@ -18,11 +18,12 @@ function usage() {
     #   echo -e "\e[3m\e[1mbold italic\e[0m"
     #   echo -e "\e[4munderline\e[0m"
     #   echo -e "\e[9mstrikethrough\e[0m"
-    echo -e "$2  \n\e[1mUsage\e[0m:"
-    echo -e "\e[3m$0 database_name table_name [ columns ]\e[0m"
-    echo -e "\e[1m-OR-\e[0m"
-    echo -e "\e[3m$0 database_name table_name [ columns ]\e[0m"
-    echo -e "            \e[3m[ WHERE where_comparison_column where_comparison_value ]\e[0m"
+    errMsg="$2  \n\e[1mUsage\e[0m:\n"
+    errMsg+="\e[3m$0 database_name table_name [ columns ]\e[0m\n"
+    errMsg+="\e[1m-OR-\e[0m\n"
+    errMsg+="\e[3m$0 database_name table_name [ columns ]\e[0m\n"
+    errMsg+="            \e[3m[ WHERE where_comparison_column where_comparison_value ]\e[0m\n"
+    echo -e "$errMsg"
     exit "$1"  # exit with error status
 }
 # I'm taking a variable number of arguments for this script, so I need to be a
@@ -112,7 +113,7 @@ done
 
 # OK - we've done a fair bit of checking to make sure our arguments make sense
 # Now time to display the data.
-echo "start_result"
+sql_results="start_result\n"
 
 # First we loop over the table file, one record at a time...
 firstRecord=true  # We always select the first record.  Even if no data records
@@ -166,11 +167,12 @@ while read -r record; do
             fi
             retrievedData+="${recordArr[(($col-1))]}"
         done
-        echo "$retrievedData"
+        sql_results+="$retrievedData\n"
     fi
 
 done < "$data_dir/$database/$table"
 # Release the lock on the table after the read is complete
 releaseLock_V "$data_dir/$database/$table"
 
-echo "end_result"
+sql_results+="end_result"
+echo -e "$sql_results"
