@@ -2,7 +2,7 @@
 # select.sh; Select some data from a database table (file)
 
 # Set up home directory and include shared resources
-home_dir=$(pwd)
+home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
@@ -35,8 +35,12 @@ elif [ -z "$2" ]; then
     usage 1 "ERROR You must supply a table name.";
 fi
 
-database=$1
-table=$2
+# This script supports spaces in the database name, table name and tuple values
+# NOTE: The script takes *3* arguments, so if spaces are required in table
+#       name, for e.g. it's important the argumnents are quoted.  E.g:
+#  insert.sh "bob the builder" "can he fix it" "bob the builder,yes he Can"
+database="$1"
+table="$2"
 # We know we have the database and table now so get rid of them.
 shift 2
 # Initialise some values, makes me happier having things defined... :-)

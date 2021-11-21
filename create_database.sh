@@ -2,7 +2,7 @@
 # create_datebase.sh; Create a folder to contain all entities for a database
 
 # Set up home directory and include shared resources
-home_dir=$(pwd)
+home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
@@ -26,7 +26,8 @@ if [ -z "$1" ]; then
 elif [ $# -ne 1 ]; then
     usage 1 "ERROR The number of arguments is wrong.";
 fi
-database=$1
+# This script supports spaces in the database name
+database="$1"
 
 # Create a lock at database level before checking/creating a database
 getLock_P "$database"

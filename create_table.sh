@@ -2,7 +2,7 @@
 # create_table.sh; Create a file representing a table in a database
 
 # Set up home directory and include shared resources
-home_dir=$(pwd)
+home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
@@ -31,10 +31,13 @@ elif [ $# -ne 3 ]; then
     usage 1 "ERROR The number of arguments is wrong.";
 fi
 
-# here the core of your script
-database=$1
-table=$2
-columns=$3
+# This script supports spaces in the database name, table name and columns
+# NOTE: The script takes *3* arguments, so if spaces are required in column
+#       labels, for e.g. it's important the argumnents are quoted.  E.g:
+#  create_table.sh "bob the builder" "can he fix it" "bob the builder,yes he Can"
+database="$1"
+table="$2"
+columns="$3"
 
 # If the database does not exist...
 if [ ! -d "$data_dir/$database" ]; then

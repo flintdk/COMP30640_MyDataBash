@@ -2,7 +2,7 @@
 # insert.sh; Insert data into a database table (file)
 
 # Set up home directory and include shared resources
-home_dir=$(pwd)
+home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
@@ -36,9 +36,13 @@ elif [ $# -ne 3 ]; then
     echo "$msg"
 fi
 
-database=$1
-table=$2
-tuple=$3
+# This script supports spaces in the database name, table name and tuple values
+# NOTE: The script takes *3* arguments, so if spaces are required in tuple
+#       values, for e.g. it's important the argumnents are quoted.  E.g:
+#  insert.sh "bob the builder" "can he fix it" "bob the builder,yes he Can"
+database="$1"
+table="$2"
+tuple="$3"
 
 # If the database does not exist...
 if [ ! -d "$data_dir/$database" ]; then

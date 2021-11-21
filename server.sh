@@ -2,7 +2,7 @@
 # server.sh; Reads commands from clients and executes them
 
 # Set up home directory and include shared resources
-home_dir=$(pwd)
+home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
@@ -76,25 +76,38 @@ if [ ! "$mode" == "$interactive" ]; then
     mkfifo server.pipe
 fi
 
+# For some notes on use of this seperator see Client.sh
+delimSep=$'\x1F'
+
 # Infinite server loop - only exits on command.
 while true; do
     if [ "$mode" == "$interactive" ]; then
         echo -n "Please enter a server command: ";
-        #read -r command;
-        #old_ifs="$IFS"
-        #IFS=' ' read -r -a commandArr
-        #IFS="$old_ifs"  # Reset IFS so I haven't broken anything...
         read -r -a commandArr
 
         # -> In INTERACTIVE mode our commands will be the base commands
     else
         # In 'service' mode we read server commands from the server.pipe pipe
-        read -r -a commandArr < server.pipe
+        #mapfile commandArr < server.pipe
+        #read -r -a commandArr < server.pipe
+        # Use xargs??
+        #   https://superuser.com/questions/1529226/get-bash-to-respect-quotes-when-word-splitting-subshell-output
+        #commandArr=("$commandStr")
+        #read -r -a testArr <<< $commandStr
+        old_ifs="$IFS"
+        # Direct our string into read by treating it as a Here Word
+        IFS=$delimSep read -r -a commandArr < server.pipe
+        IFS="$old_ifs"  # Reset IFS so I haven't broken anything...
+        # msg="SERVER.SH: Post pipe, our command array is:\n"
+        # for arg in "${commandArr[@]}"; do
+        #     msg+="\t>$arg<\n";
+        # done
+        # echo -e "$msg"
 
         # -> In 'Service' mode our commands will have a UserId first, followed by
         #    the base commands.  Grab out the user id...
         userId="${commandArr[0]}"
-        echo "userid is $userId"
+        #echo -e "SERVER.SH: userid is $userId"
 
         # Then remove the first element of the array...
         # Use a new method (to me) to remove the first element from the array. See:
@@ -108,13 +121,13 @@ while true; do
 
     # Whether interactive or service mode, now grab the server command...
     srvrCommand="${commandArr[0]}"
-    echo "srvrCommand is $srvrCommand"
+    #echo -e "SERVER.SH: srvrCommand is $srvrCommand"
     argArr=("${commandArr[@]:1}")  # ... and then remove it from the array too...
-    msg="server.sh function arguments are:"
-    for fnArg in "${argArr[@]}"; do
-        msg+=" >$fnArg<";
-    done
-    echo "$msg"
+    # msg="SERVER.SH: function arguments are:"
+    # for fnArg in "${argArr[@]}"; do
+    #     msg+=" >$fnArg<";
+    # done
+    # echo -e "$msg"
 
     case "$srvrCommand" in
     create_database)
@@ -159,12 +172,12 @@ while true; do
         fi
         ;;
     *)
-        errMsg="ERROR: Bad server command. I don't understand -> \"$srvrCommand\"";
-        errMsg+="Ignoring, logging and listening for more commands!";
+        errMsg="SERVER.SH: ERROR Bad command. I don't understand -> \"$srvrCommand\"";
+        errMsg+="IGNORING.  Listening for more commands! ...";
         if [ "$mode" == "$interactive" ]; then
-            echo "$errMsg"
+            echo -e "$errMsg"
         else
-            echo "$errMsg" > "$userId.pipe"
+            echo -e "$errMsg" > "$userId.pipe"
         fi
     esac
 done
