@@ -28,12 +28,12 @@ elif [ -z "$2" ]; then
 elif [ -z "$3" ]; then
     usage 1 "ERROR You must supply a tuple with the data for insert.";
 elif [ $# -ne 3 ]; then
+    # msg="INSERT.SH: command line arguments are:"
+    # for arg in "$@"; do
+    #     msg+="\t>$arg<\n";
+    # done
+    # echo -e "$msg"
     usage 1 "ERROR The number of arguments is wrong.";
-    msg="insert.sh arguments are:"
-    for arg in "$@"; do
-        msg+=" >$arg<";
-    done
-    echo "$msg"
 fi
 
 # This script supports spaces in the database name, table name and tuple values

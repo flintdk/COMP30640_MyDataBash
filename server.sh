@@ -33,12 +33,44 @@ function usage() {
     # this application, aborting seems overkill!
     exit $1  # exit with error status
 }
+
+# Use ps to see if we're running in the foreground or in the background...
+# -o format   Means "in a User-defined format."
+# format is a single argument in the form of a blank-separated or comma-separated list
+# and offers a way to specify individual output columns.
+# 'stat' means multi-character process state.
+# According to the list of PROCESS STATE CODES '+' means in the foreground process group
+serverProcess=""
+foreground="foreground"
+background="background"
+case $(ps -o stat= -p $$) in
+  *+*) serverProcess="$foreground" ;;
+  *) serverProcess="$background" ;;
+esac
+
+# The server as configured can run:
+# -> In the background, running as a 'service' listening on the server pipe
+# -> In the foreground, running as a 'service' listening on the server pipe
+# -> In the foreground, running as an interactive server, accepting commands
+#    from the keyboard.
 mode=""
 interactive="INTERACTIVE"
-if [ -z "$1" ]; then
-    echo "Running as a service.  Input from the keyboard ignored.";
+if [ $# -gt 1 ]; then
+    msg="ERROR The number of arguments is wrong. Encountered:\n"
+    for arg in "$@"; do
+        msg+="\t$arg\n";
+    done
+    usage 1 "$msg"
+elif [ -z "$1" ] || [ "$serverProcess" = "$background" ] ; then
+    # If there's no command line argument -OR- we're running in the background
+    # (regardless of any command line arguement) then... we're running as a service
+    if [ "$serverProcess" = "$foreground" ]; then
+        msg="Running as a service (listening on server.pipe) on this terminal.\n";
+        msg+="Input from the keyboard ignored!";
+        echo -e "$msg";
+    fi
 elif [ "$1" == "$interactive" ]; then
-    echo "Running in INTERACTIVE mode.  Commands from the keyboard processed.";
+    echo "Running in INTERACTIVE mode.  Processing keyboard commands locally.";
     mode="$1"
 else
     usage 1 "ERROR: Expected \"INTERACTIVE\" or no arguments, encountered \"$1\""
@@ -82,8 +114,10 @@ delimSep=$'\x1F'
 # Infinite server loop - only exits on command.
 while true; do
     if [ "$mode" == "$interactive" ]; then
-        echo -n "Please enter a server command: ";
-        read -r -a commandArr
+        echo ""
+        read -p "Please enter a server command: " -r commandStr
+        commandArr=()
+        parseUserInstrnString "$commandStr" commandArr  # call function to parse the commandStr
 
         # -> In INTERACTIVE mode our commands will be the base commands
     else
