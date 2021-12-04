@@ -1,11 +1,17 @@
 #!/bin/bash
 # dbutils.sh; Function, etc. library for the amazing Database Server
 
+# Set a variable for the applications home directory.
 home_dir="$(pwd)"
-# I prefer havin all my databases in a 'data' subfolder.  But I have them set
+
+# I prefer having all my databases in a 'data' subfolder.  But I have set them
 # to the root folder so my project will pass the autograding tests.
-#data_dir=$home_dir/data
-data_dir=$home_dir
+#
+# Following shellcheck code is irrelevant because ${data_dir} is not referenced
+# in this script, but is referenced in client.sh/server.sh
+# shellcheck disable=SC2034
+data_dir=$home_dir/data
+#data_dir=$home_dir
 
 # Made the following - bad as it is - out of frustration trying to deal with
 # word splitting on commands read in from the user.

@@ -16,6 +16,7 @@ function echoCommandDocs() {
     cmdMsg+="  \e[3minsert \"database_name\" \"table_name\" \"data_tuple\"\e[0m\n"
     cmdMsg+="  \e[3mselect \"database_name\" \"table_name\" [ column,numbers,separated,by,commas ]\e[0m\n"
     cmdMsg+="            \e[3m[ WHERE comparison_column_number \"comparison_value\" ]\e[0m\n"
+    cmdMsg+="  \e[3mlaunch\e[0m - Launch the remote server (in the background)\n"
     cmdMsg+="  \e[3mshutdown\e[0m - Shut down the remote server\n"
     cmdMsg+="  \e[3mexit\e[0m - Shut down this client"
     echo -e "$cmdMsg"
@@ -35,7 +36,7 @@ function usage() {
     #   echo -e "\e[9mstrikethrough\e[0m"
     echo -e "$2\n\e[1mUsage\e[0m:"
     echo -e "\e[3m$0\e[0m \e[3muser_id\e[0m"
-    echoCommandDocs
+    #echoCommandDocs  # Not sure whether to include this here........
     #
     # For our mission-critical server process, we don't exit if there's a bad
     # request. We just log it and continue. Given the command-line nature of
@@ -67,6 +68,10 @@ function ctrl_c() {
 #===============================================================================
 #===============================================================================
 
+# We clear the terminal, removes any clutter, hopefully helps the user
+clear
+echoCommandDocs
+
 # Before we enter our management loop, create our command pipe
 userId="$1"  # This does nothing, but does make code below easier to read.
 if [ ! -e "$userId.pipe" ]; then
@@ -78,7 +83,7 @@ fi
 
 # I store an array of valid commands, to allow for some quick, simple validation
 # before sending any content to the server.
-valid_commands=("create_database" "create_table" "insert" "select" "shutdown" "help" "exit")
+valid_commands=("create_database" "create_table" "insert" "select" "launch" "shutdown" "help" "exit")
 
 # When your run a script from the command line, the script benefits from the
 # rather nice word-splitting behaviour of the shell (where it splits on spaces
@@ -97,8 +102,6 @@ valid_commands=("create_database" "create_table" "insert" "select" "shutdown" "h
 # I chose to use the "Unit Separator" ('\031' -or- '\x1F') to delimit my commands
 # The benefit of using a control code (instead of say ';' etc.) is that it's far
 # less likely to occur in user-entered data.
-# Of course... after I did this, tested it and made sure it worked... I found out
-# I was going to have the same issue on content read from sys$input... :-(
 delimSep=$'\x1F'
 
 # Infinite client loop - only exits on command.
@@ -139,6 +142,12 @@ while true; do
             echo ""
             echoCommandDocs
             ;;
+        launch)
+            # help: print a list of supported commands
+            echo "Launching Server.  Please wait..."
+            "$home_dir/server.sh" > /dev/null 2>&1 &
+            echo "Server Started.  Listening for more commands! ..."
+            ;;
         exit)
             # shutdown: exit with a return code of 0
             shutdownClient "CLIENT.SH" "$userId.pipe"
@@ -146,38 +155,45 @@ while true; do
         *)
             # All other commands get relayed to the server
 
-            serverCommand="${userId}${delimSep}${clientCommand}"
-            for arg in "${argArr[@]}"; do
-                serverCommand+="${delimSep}$arg";
-            done
-            #echo -e "CLIENT.SH: Server Command (pre pipe): $serverCommand"
-            echo "$serverCommand" > "server.pipe"
+            # Do a basic 'server exists' check by looking for the server pipe
+            # before relaying commands to it...
+            if [ -p "$home_dir/server.pipe" ]; then
+                serverCommand="${userId}${delimSep}${clientCommand}"
+                for arg in "${argArr[@]}"; do
+                    serverCommand+="${delimSep}$arg";
+                done
+                #echo -e "CLIENT.SH: Server Command (pre pipe): $serverCommand"
+                echo "$serverCommand" > "server.pipe"
 
-            # We've now sent our command to the server.  It's ESSENTIAL that we read
-            # the reply pipe.  In bash, pipes are blocking.  So if the server writes a
-            # reply to this clients result pipe, the server will be blocked indefinitely
-            # until something on this end consumes the pipe contents!!
-            case "$clientCommand" in  # CASE_ReplyProcessing
-            select)
-                # With select, what has to be printed on the terminal is everything
-                # after the first word ('start result') until the keyword 'end result'
-                # For sed:
-                # 1 = first line, d = delete, ; is the cmd separator, $ = last line
-                sed '1d;$d' "$home_dir/$userId.pipe"
-                ;;
-            *)
-                # create table $database $table: which creates table $table
-                #read -r reply < "$userId.pipe"
-                #echo "$reply"
-                #cat "$home_dir/$userId.pipe"
-                cat "$home_dir/$userId.pipe"
-                ;;
-            esac  # CASE_ReplyProcessing
+                # We've now sent our command to the server.  It's ESSENTIAL that we read
+                # the reply pipe.  In bash, pipes are blocking.  So if the server writes a
+                # reply to this clients result pipe, the server will be blocked indefinitely
+                # until something on this end consumes the pipe contents!!
+                case "$clientCommand" in  # CASE_ReplyProcessing
+                select)
+                    # With select, what has to be printed on the terminal is everything
+                    # after the first word ('start result') until the keyword 'end result'
+                    # For sed:
+                    # 1 = first line, d = delete, ; is the cmd separator, $ = last line
+                    sed '1d;$d' "$home_dir/$userId.pipe"
+                    ;;
+                *)
+                    # For all other commands we simply cat out all the pipe content
+                    # unfiltered...
+                    cat "$home_dir/$userId.pipe"
+                    ;;
+                esac  # CASE_ReplyProcessing
+            else
+                errMsg="CLIENT.SH: ERROR It appears the server is not running!\n";
+                errMsg+="           (No 'server.pipe' found).\n";
+                errMsg+="Listening for more commands! ...";
+                echo -e "$errMsg"
+            fi
         esac  # CASE_ClientOrServer?
 
     else  # if [[ ${valid_commands[*]} =~ ${clientCommand} ]]; then
         errMsg="CLIENT.SH: ERROR Bad command. I don't understand -> \"$clientCommand\"\n";
-        errMsg+="IGNORING.  Listening for more commands! ...";
+        errMsg+="Listening for more commands! ...";
         echo -e "$errMsg"
     fi
 done

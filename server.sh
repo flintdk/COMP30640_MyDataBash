@@ -63,7 +63,7 @@ if [ $# -gt 1 ]; then
     usage 1 "$msg"
 elif [ -z "$1" ] || [ "$serverProcess" = "$background" ] ; then
     # If there's no command line argument -OR- we're running in the background
-    # (regardless of any command line arguement) then... we're running as a service
+    # (regardless of any command line argument) then... we're running as a service
     if [ "$serverProcess" = "$foreground" ]; then
         msg="Running as a service (listening on server.pipe) on this terminal.\n";
         msg+="Input from the keyboard ignored!";
