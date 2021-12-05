@@ -6,6 +6,20 @@ home_dir="$(pwd)"
 # shellcheck source=./dbutils.sh
 source "$home_dir/dbutils.sh"
 
+# Helper function - save me keying command summary twice, ensures consistancy in
+# user docs (such as they are)
+function echoServerCommandDocs() {
+    cmdMsg="Server Commands Accepted:\n"
+    cmdMsg+="  \e[3mhelp\e[0m - See this help text\n"
+    cmdMsg+="  \e[3mcreate_database \"database_name\"\e[0m\n"
+    cmdMsg+="  \e[3mcreate_table \"database_name\" \"table_name\" \"columns_list\"\e[0m\n"
+    cmdMsg+="  \e[3minsert \"database_name\" \"table_name\" \"data_tuple\"\e[0m\n"
+    cmdMsg+="  \e[3mselect \"database_name\" \"table_name\" [ column,numbers,separated,by,commas ]\e[0m\n"
+    cmdMsg+="            \e[3m[ WHERE comparison_column_number \"comparison_value\"\e[0m\n"
+    cmdMsg+="  \e[3mserver_shutdown\e[0m\n"
+    echo -e "$cmdMsg"
+}
+
 # First - check our arguments:
 function usage() {
     # Function 'usage()'' expects two arguments.
@@ -18,20 +32,15 @@ function usage() {
     #   echo -e "\e[3m\e[1mbold italic\e[0m"
     #   echo -e "\e[4munderline\e[0m"
     #   echo -e "\e[9mstrikethrough\e[0m"
-    echo -e "$2  \n\e[1mUsage\e[0m:"
-    errMsg="\e[3m$0 [create_database | create_table | insert | select | shutdown]\e[0m\n"
-    errMsg+="  \e[3mcreate_database database_name\e[0m\n"
-    errMsg+="  \e[3mcreate_table database_name table_name columns_name\e[0m\n"
-    errMsg+="  \e[3minsert database_name table_name data_tuple\e[0m\n"
-    errMsg+="  \e[3mselect database_name table_name [ columns ]\e[0m\n"
-    errMsg+="            \e[3m[ WHERE where_comparison_column where_comparison_value\e[0m\n"
-    errMsg+="  \e[3mshutdown\e[0m\n"
-    echo -e "$errMsg"
+    echo -e "$2 \n\e[1mUsage\e[0m:"
+    echo -e "\e[3m$0\e[0m \e[3m[ INTERACTIVE ]\e[0m"
+    echo -e "Aborting..."
+    #echoServerCommandDocs  # Not sure whether to include this here........
     #
     # For our mission-critical server process, we don't exit if there's a bad
     # request. We just log it and continue. Given the command-line nature of
     # this application, aborting seems overkill!
-    exit $1  # exit with error status
+    exit "$1"  # exit with error status
 }
 
 # Use ps to see if we're running in the foreground or in the background...
@@ -43,10 +52,13 @@ function usage() {
 serverProcess=""
 foreground="foreground"
 background="background"
+ps -o stat= -p $$ >> "$home_dir/testing.log" 2>&1 &
+# For command ps, 'stat' means multi-character process state (See ps PROCESS STATE CODES)
 case $(ps -o stat= -p $$) in
   *+*) serverProcess="$foreground" ;;
   *) serverProcess="$background" ;;
 esac
+#echo "SERVER.SH:  I have detected I am running in the $serverProcess."
 
 # The server as configured can run:
 # -> In the background, running as a 'service' listening on the server pipe
@@ -63,15 +75,21 @@ if [ $# -gt 1 ]; then
     usage 1 "$msg"
 elif [ -z "$1" ] || [ "$serverProcess" = "$background" ] ; then
     # If there's no command line argument -OR- we're running in the background
-    # (regardless of any command line argument) then... we're running as a service
+    # (regardless of any command line argument) then... we're running "as a service"
+    # (i.e. listening to the pipe for commands)
     if [ "$serverProcess" = "$foreground" ]; then
         msg="Running as a service (listening on server.pipe) on this terminal.\n";
         msg+="Input from the keyboard ignored!";
         echo -e "$msg";
     fi
 elif [ "$1" == "$interactive" ]; then
-    echo "Running in INTERACTIVE mode.  Processing keyboard commands locally.";
+    clear
     mode="$1"
+    msg="Running in INTERACTIVE mode.\n"
+    msg+="    ** TESTING ONLY ***\n"
+    msg+="Processing keyboard commands locally.\n";
+    echo -e "$msg";
+    echoServerCommandDocs
 else
     usage 1 "ERROR: Expected \"INTERACTIVE\" or no arguments, encountered \"$1\""
 fi
@@ -82,10 +100,28 @@ fi
 function shutdownServer() {
     # shutdownServer; Shut down the server.
     shutdownMsg="$1 Orderly Server Shutdown requested.  Bye!"
-    if [ "$mode" == "$interactive" ]; then
-        echo "$shutdownMsg"
-    else
-        echo "$shutdownMsg" > "$userId.pipe"
+    if [ "$serverProcess" == "$foreground" ]; then
+        # If we're not running in the background, display a message when shutting down
+        echo -e "$shutdownMsg"
+    fi
+    if [ ! "$mode" == "$interactive" ]; then
+        # If we're running the server "as a service" (i.e. listening on the pipes)
+        # then send a shutdown message over to any open clients.
+        # for clientPipe in "${pipes_dir}"/*
+        # do
+        #     if [ -p "$clientPipe" ] && [ "$clientPipe" != "$pipes_dir/server.pipe" ]; then
+        #         echo "SERVER.SH: Found a client pipe. Informing it of shutdown: (${clientPipe})"
+        #         echo -e "$shutdownMsg" > "$clientPipe"
+        #     fi
+        # done
+
+        # The blocking bahviour of communcation over pipes was causing me issues
+        # *IF* I was sticking to this design and *IF* this was a real application
+        # I would create a background process for the client process just to 
+        # monitor the client pipe and relay messages to the screen.
+        if [ -p "$pipes_dir/$userId.pipe" ]; then
+            echo -e "$shutdownMsg" > "$pipes_dir/$userId.pipe"
+        fi
     fi
     tidyPipe "$1" "$2"
     exit 0
@@ -94,7 +130,7 @@ function shutdownServer() {
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 function ctrl_c() {
-    shutdownServer "CTRL-C" "server.pipe"
+    shutdownServer "\nCTRL-C" "server.pipe"
     exit 1
 }
 
@@ -105,7 +141,7 @@ function ctrl_c() {
 # If we're not in INTERACTIVE mode, then before we enter our management loop,
 # create our command pipe
 if [ ! "$mode" == "$interactive" ]; then
-    mkfifo server.pipe
+    mkfifo "$pipes_dir/server.pipe"
 fi
 
 # For some notes on use of this seperator see Client.sh
@@ -130,7 +166,7 @@ while true; do
         #read -r -a testArr <<< $commandStr
         old_ifs="$IFS"
         # Direct our string into read by treating it as a Here Word
-        IFS=$delimSep read -r -a commandArr < server.pipe
+        IFS=$delimSep read -r -a commandArr < "$pipes_dir/server.pipe"
         IFS="$old_ifs"  # Reset IFS so I haven't broken anything...
         # msg="SERVER.SH: Post pipe, our command array is:\n"
         # for arg in "${commandArr[@]}"; do
@@ -167,42 +203,42 @@ while true; do
     create_database)
         # create_database $database: creates database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/create_database.sh" "${argArr[@]}" > "$home_dir/create_database.log" 2>&1 &
+            "$home_dir/create_database.sh" "${argArr[@]}" >> "$home_dir/create_database.log" 2>&1 &
         else
-            "$home_dir/create_database.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
+            "$home_dir/create_database.sh" "${argArr[@]}" > "$pipes_dir/$userId.pipe" 2>&1 &
         fi
         ;;
     create_table)
         # create table $database $table: which creates table $table
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/create_table.sh" "${argArr[@]}" > "$home_dir/create_table.log" 2>&1 &
+            "$home_dir/create_table.sh" "${argArr[@]}" >> "$home_dir/create_table.log" 2>&1 &
         else
-            "$home_dir/create_table.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
+            "$home_dir/create_table.sh" "${argArr[@]}" > "$pipes_dir/$userId.pipe" 2>&1 &
         fi
         ;;
     insert)
         # insert $database $table tuple: insert the tuple into table $table of database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/insert.sh" "${argArr[@]}" > "$home_dir/insert.log" 2>&1 &
+            "$home_dir/insert.sh" "${argArr[@]}" >> "$home_dir/insert.log" 2>&1 &
         else
-            "$home_dir/insert.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
+            "$home_dir/insert.sh" "${argArr[@]}" > "$pipes_dir/$userId.pipe" 2>&1 &
         fi
         
         ;;
     select)
         # select $database $table tuple: display the columns from table $table of database $database
         if [ "$mode" == "$interactive" ]; then
-            "$home_dir/select.sh" "${argArr[@]}" > "$home_dir/select.log" 2>&1 &
+            "$home_dir/select.sh" "${argArr[@]}" >> "$home_dir/select.log" 2>&1 &
         else
-            "$home_dir/select.sh" "${argArr[@]}" > "$userId.pipe" 2>&1 &
+            "$home_dir/select.sh" "${argArr[@]}" > "$pipes_dir/$userId.pipe" 2>&1 &
         fi
         ;;
-    shutdown)
+    server_shutdown)
         # shutdown: exit with a return code of 0
         if [ "$mode" == "$interactive" ]; then
             shutdownServer "SERVER.SH" "server.pipe"
         else
-            shutdownServer "SERVER.SH" "server.pipe" > "$userId.pipe" 2>&1
+            shutdownServer "SERVER.SH" "server.pipe" > "$pipes_dir/$userId.pipe" 2>&1
         fi
         ;;
     *)
@@ -211,7 +247,7 @@ while true; do
         if [ "$mode" == "$interactive" ]; then
             echo -e "$errMsg"
         else
-            echo -e "$errMsg" > "$userId.pipe"
+            echo -e "$errMsg" > "$pipes_dir/$userId.pipe"
         fi
     esac
 done

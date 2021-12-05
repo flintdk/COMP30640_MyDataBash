@@ -30,17 +30,17 @@ fi
 database="$1"
 
 # Create a lock at database level before checking/creating a database
-getLock_P "$database"
+getLock_P "$data_dir/$database"
 if [ -e "$data_dir/$database" ]; then
     echo -e "ERROR The database \e[1m$database\e[0m already exists!  Aborting..." >&2 # &2 is standard error output
     # If the db already exists, we need to exit.  Don't forget to release the lock!
-    releaseLock_V "$database"
+    releaseLock_V "$data_dir/$database"
     exit 2 # the exit code that shows the db already existed
 else
     # at the end of the script an exit code 0 means everything went well
     mkdir "$data_dir/$database"
     # Db created - release the lock
-    releaseLock_V "$database"
+    releaseLock_V "$data_dir/$database"
     echo -e "Success! The database \e[1m$database\e[0m has been created"
     exit 0
 fi

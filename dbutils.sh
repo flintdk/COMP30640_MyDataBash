@@ -10,8 +10,9 @@ home_dir="$(pwd)"
 # Following shellcheck code is irrelevant because ${data_dir} is not referenced
 # in this script, but is referenced in client.sh/server.sh
 # shellcheck disable=SC2034
-data_dir=$home_dir/data
-#data_dir=$home_dir
+#data_dir=$home_dir/data
+data_dir=$home_dir
+pipes_dir=$home_dir/pipes
 
 # Made the following - bad as it is - out of frustration trying to deal with
 # word splitting on commands read in from the user.
@@ -89,8 +90,8 @@ function tidyPipe() {
 
     # I have implemented no argument checking!! How much do I trust myself...
     echo -e "$1: Cleaning up pipe '$2'"
-    if [ -p "$2" ]; then
-        rm "$home_dir/$2"
+    if [ -p "$pipes_dir/$2" ]; then
+        rm "$pipes_dir/$2"
     fi
 }
 

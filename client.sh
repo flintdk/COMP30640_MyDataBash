@@ -8,7 +8,7 @@ source "$home_dir/dbutils.sh"
 
 # Helper function - save me keying command summary twice, ensures consistancy in
 # user docs (such as they are)
-function echoCommandDocs() {
+function echoClientCommandDocs() {
     cmdMsg="Client Commands Processed:\n"
     cmdMsg+="  \e[3mhelp\e[0m - See this help text\n"
     cmdMsg+="  \e[3mcreate_database \"database_name\"\e[0m\n"
@@ -16,8 +16,8 @@ function echoCommandDocs() {
     cmdMsg+="  \e[3minsert \"database_name\" \"table_name\" \"data_tuple\"\e[0m\n"
     cmdMsg+="  \e[3mselect \"database_name\" \"table_name\" [ column,numbers,separated,by,commas ]\e[0m\n"
     cmdMsg+="            \e[3m[ WHERE comparison_column_number \"comparison_value\" ]\e[0m\n"
-    cmdMsg+="  \e[3mlaunch\e[0m - Launch the remote server (in the background)\n"
-    cmdMsg+="  \e[3mshutdown\e[0m - Shut down the remote server\n"
+    cmdMsg+="  \e[3mserver_launch\e[0m - Launch the remote server (in the background)\n"
+    cmdMsg+="  \e[3mserver_shutdown\e[0m - Shut down the remote server\n"
     cmdMsg+="  \e[3mexit\e[0m - Shut down this client"
     echo -e "$cmdMsg"
 }
@@ -36,7 +36,7 @@ function usage() {
     #   echo -e "\e[9mstrikethrough\e[0m"
     echo -e "$2\n\e[1mUsage\e[0m:"
     echo -e "\e[3m$0\e[0m \e[3muser_id\e[0m"
-    #echoCommandDocs  # Not sure whether to include this here........
+    #echoClientCommandDocs  # Not sure whether to include this here........
     #
     # For our mission-critical server process, we don't exit if there's a bad
     # request. We just log it and continue. Given the command-line nature of
@@ -70,20 +70,20 @@ function ctrl_c() {
 
 # We clear the terminal, removes any clutter, hopefully helps the user
 clear
-echoCommandDocs
+echoClientCommandDocs
 
 # Before we enter our management loop, create our command pipe
 userId="$1"  # This does nothing, but does make code below easier to read.
-if [ ! -e "$userId.pipe" ]; then
-    mkfifo "$userId.pipe"
+if [ ! -e "$pipes_dir/$userId.pipe" ]; then
+    mkfifo "$pipes_dir/$userId.pipe"
 else
-    echo "ERROR: Client Pipe (\"$userId.pipe\") already exists! Aborting..."
+    echo "ERROR: Client Pipe (\"$pipes_dir/$userId.pipe\") already exists! Aborting..."
     exit 1
 fi
 
 # I store an array of valid commands, to allow for some quick, simple validation
 # before sending any content to the server.
-valid_commands=("create_database" "create_table" "insert" "select" "launch" "shutdown" "help" "exit")
+valid_commands=("create_database" "create_table" "insert" "select" "server_launch" "server_shutdown" "help" "exit")
 
 # When your run a script from the command line, the script benefits from the
 # rather nice word-splitting behaviour of the shell (where it splits on spaces
@@ -140,9 +140,9 @@ while true; do
         help)
             # help: print a list of supported commands
             echo ""
-            echoCommandDocs
+            echoClientCommandDocs
             ;;
-        launch)
+        server_launch)
             # help: print a list of supported commands
             echo "Launching Server.  Please wait..."
             "$home_dir/server.sh" > /dev/null 2>&1 &
@@ -157,13 +157,13 @@ while true; do
 
             # Do a basic 'server exists' check by looking for the server pipe
             # before relaying commands to it...
-            if [ -p "$home_dir/server.pipe" ]; then
+            if [ -p "$pipes_dir/server.pipe" ]; then
                 serverCommand="${userId}${delimSep}${clientCommand}"
                 for arg in "${argArr[@]}"; do
                     serverCommand+="${delimSep}$arg";
                 done
                 #echo -e "CLIENT.SH: Server Command (pre pipe): $serverCommand"
-                echo "$serverCommand" > "server.pipe"
+                echo "$serverCommand" > "$pipes_dir/server.pipe"
 
                 # We've now sent our command to the server.  It's ESSENTIAL that we read
                 # the reply pipe.  In bash, pipes are blocking.  So if the server writes a
@@ -175,12 +175,12 @@ while true; do
                     # after the first word ('start result') until the keyword 'end result'
                     # For sed:
                     # 1 = first line, d = delete, ; is the cmd separator, $ = last line
-                    sed '1d;$d' "$home_dir/$userId.pipe"
+                    sed '1d;$d' "$pipes_dir/$userId.pipe"
                     ;;
                 *)
                     # For all other commands we simply cat out all the pipe content
                     # unfiltered...
-                    cat "$home_dir/$userId.pipe"
+                    cat "$pipes_dir/$userId.pipe"
                     ;;
                 esac  # CASE_ReplyProcessing
             else
