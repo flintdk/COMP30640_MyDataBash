@@ -54,7 +54,6 @@ function shutdownClient() {
     # shutdownServer; Shut down the server.
     echo "$1: Orderly Client Shutdown requested.  Bye!"
     tidyPipe "$1" "$2"
-    exit 0
 }
 
 # trap ctrl-c and call ctrl_c()
@@ -151,6 +150,7 @@ while true; do
         exit)
             # shutdown: exit with a return code of 0
             shutdownClient "CLIENT.SH" "$userId.pipe"
+            exit 0
             ;;
         *)
             # All other commands get relayed to the server

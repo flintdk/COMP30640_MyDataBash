@@ -124,7 +124,6 @@ function shutdownServer() {
         fi
     fi
     tidyPipe "$1" "$2"
-    exit 0
 }
 
 # trap ctrl-c and call ctrl_c()
@@ -240,6 +239,7 @@ while true; do
         else
             shutdownServer "SERVER.SH" "server.pipe" > "$pipes_dir/$userId.pipe" 2>&1
         fi
+        exit 0
         ;;
     *)
         errMsg="SERVER.SH: ERROR Bad command. I don't understand -> \"$srvrCommand\"";
